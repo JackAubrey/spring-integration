@@ -1,9 +1,13 @@
 package com.pluralsight.demo.web;
 
 import com.pluralsight.demo.model.AttendeeRegistration;
-import com.pluralsight.demo.service.RegistrationService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,17 +15,15 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import jakarta.validation.Valid;
-
 @Controller
 @RequestMapping("/")
 public class RegistrationController {
     private static final Logger LOG = LoggerFactory.getLogger(RegistrationController.class);
 
-    private final RegistrationService registrationService;
+    private final MessageChannel registrationRequestChannel;
 
-    public RegistrationController(RegistrationService registrationService) {
-        this.registrationService = registrationService;
+    public RegistrationController(@Qualifier("registrationRequestChannel") MessageChannel registrationRequestChannel) {
+        this.registrationRequestChannel = registrationRequestChannel;
     }
 
     @GetMapping
@@ -36,7 +38,8 @@ public class RegistrationController {
             return "index";
         }
 
-        registrationService.register(registration);
+        Message<AttendeeRegistration> message = MessageBuilder.withPayload(registration).build();
+        registrationRequestChannel.send(message);
 
         return "success";
     }
