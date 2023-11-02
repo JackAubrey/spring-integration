@@ -51,11 +51,11 @@ public class RegistrationService {
         this.ticketTypeRepository = ticketTypeRepository;
     }
 
-    @ServiceActivator(inputChannel = "registrationRequestChannel")
     /**
+     * NOTE: Using SpringIntegration DSL, the ServiceActivator annotation isn't required anymore.
      * NEVER USE the Message<T>. This object allows you to transport both the headers and the payload.
      * While it is feasible to use it directly, it would go against EIP schemes and introduce into business logic
-     * a thight coupling with the technology we are using. The business logic should be agnostic.
+     * a tight coupling with the technology we are using. The business logic should be agnostic.
      * It must be able to work regardless of who is using it.
      * This allows it to be used easily from a service, from spring-integration, from a controller-rest etc.
      */
