@@ -16,12 +16,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,11 +52,19 @@ public class RegistrationService {
     }
 
     @ServiceActivator(inputChannel = "registrationRequestChannel")
-    public void register(AttendeeRegistration registration) {
+    /**
+     * NEVER USE the Message<T>. This object allows you to transport both the headers and the payload.
+     * While it is feasible to use it directly, it would go against EIP schemes and introduce into business logic
+     * a thight coupling with the technology we are using. The business logic should be agnostic.
+     * It must be able to work regardless of who is using it.
+     * This allows it to be used easily from a service, from spring-integration, from a controller-rest etc.
+     */
+    public void register(@Header("dateTime")OffsetDateTime dateTime,
+                         @Payload AttendeeRegistration registration) {
         LOG.debug("Registration received for: {}", registration.getEmail());
 
         Attendee attendee = createAttendee(registration);
-        TicketPrice ticketPrice = getTicketPrice(registration);
+        TicketPrice ticketPrice = getTicketPrice(dateTime, registration);
         Optional<DiscountCode> discountCode = discountCodeRepository.findByCode(registration.getDiscountCode());
 
         AttendeeTicket attendeeTicket = new AttendeeTicket();
@@ -78,11 +89,11 @@ public class RegistrationService {
         return attendee;
     }
 
-    private TicketPrice getTicketPrice(AttendeeRegistration registration) {
+    private TicketPrice getTicketPrice(OffsetDateTime dateTime, AttendeeRegistration registration) {
         TicketType ticketType = ticketTypeRepository.findByCode(registration.getTicketType())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid ticket type: " + registration.getTicketType()));
 
-        PricingCategory pricingCategory = pricingCategoryRepository.findByDate(LocalDate.now())
+        PricingCategory pricingCategory = pricingCategoryRepository.findByDate(dateTime.toLocalDate())
                 .or(() -> pricingCategoryRepository.findByCode("L"))
                 .orElseThrow(() -> new EntityNotFoundException("Cannot determine pricing category"));
 
